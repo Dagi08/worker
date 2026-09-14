@@ -1,0 +1,6 @@
+.env
+worker_pwc.log
+worker_pwc_state.json
+resultados/
+__pycache__/
+temp/
