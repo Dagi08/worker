@@ -1,5 +1,5 @@
 .env
-worker_pwc.log
+logs/
 worker_pwc_state.json
 resultados/
 __pycache__/

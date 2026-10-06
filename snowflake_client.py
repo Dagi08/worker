@@ -1,5 +1,7 @@
 """Conexion a Snowflake: autenticacion por llave RSA (key-pair auth) con respaldo
 opcional a usuario/contrasena si la conexion por RSA falla."""
+import base64
+
 import snowflake.connector
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
@@ -10,24 +12,23 @@ from config import (
     SF_FALLBACK_PASSWORD,
     SF_FALLBACK_USER,
     SF_PRIVATE_KEY_PASSPHRASE,
-    SF_PRIVATE_KEY_PATH,
     SF_ROLE,
     SF_SCHEMA,
     SF_USER,
     SF_WAREHOUSE,
     log,
 )
+from pam_client import obtener_llave_privada_pam
 
 
 def _cargar_llave_privada_snowflake() -> bytes:
-    """Lee el .p8 configurado en SNOWFLAKE_PRIVATE_KEY_PATH y lo devuelve en formato
-    DER/PKCS8 sin cifrar, como lo requiere snowflake-connector-python."""
-    with open(SF_PRIVATE_KEY_PATH, "rb") as f:
-        clave = serialization.load_pem_private_key(
-            f.read(),
-            password=SF_PRIVATE_KEY_PASSPHRASE.encode() if SF_PRIVATE_KEY_PASSPHRASE else None,
-            backend=default_backend(),
-        )
+    """Obtiene la llave desde PAM (DER en base64) y la devuelve en formato DER/PKCS8 sin cifrar,
+    como lo requiere snowflake-connector-python."""
+    clave = serialization.load_der_private_key(
+        base64.b64decode(obtener_llave_privada_pam()),
+        password=SF_PRIVATE_KEY_PASSPHRASE.encode() if SF_PRIVATE_KEY_PASSPHRASE else None,
+        backend=default_backend(),
+    )
     return clave.private_bytes(
         encoding=serialization.Encoding.DER,
         format=serialization.PrivateFormat.PKCS8,
