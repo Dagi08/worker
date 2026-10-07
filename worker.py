@@ -5,6 +5,7 @@ resultado como JSON. El archivo rota por dia, igual que el resto de logs del pro
 import json
 import time
 from datetime import datetime, timedelta
+from typing import Callable
 
 from config import BASE_DIR, POLL_SECONDS, RESULTADOS_DIR, log
 from log_reader import cargar_estado, guardar_estado, leer_desde, ruta_del_dia
@@ -35,18 +36,22 @@ def procesar_linea(linea: str) -> None:
     )
 
 
+def _guardador(fecha: str) -> Callable[[int], None]:
+    return lambda offset: guardar_estado({"fecha": fecha, "offset": offset})
+
+
 def ciclo() -> None:
     estado = cargar_estado()
     hoy = datetime.now().strftime("%Y%m%d")
     while estado["fecha"] != hoy:
-        estado["offset"] = leer_desde(ruta_del_dia(estado["fecha"]), estado["offset"], procesar_linea)
-        guardar_estado(estado)
+        ruta = ruta_del_dia(estado["fecha"])
+        estado["offset"] = leer_desde(ruta, estado["offset"], procesar_linea, _guardador(estado["fecha"]))
+        if ruta.exists() and estado["offset"] < ruta.stat().st_size:
+            return
         siguiente = (datetime.strptime(estado["fecha"], "%Y%m%d") + timedelta(days=1)).strftime("%Y%m%d")
         estado = {"fecha": siguiente, "offset": 0}
         guardar_estado(estado)
-    nuevo_offset = leer_desde(ruta_del_dia(hoy), estado["offset"], procesar_linea)
-    if nuevo_offset != estado["offset"]:
-        guardar_estado({"fecha": hoy, "offset": nuevo_offset})
+    leer_desde(ruta_del_dia(hoy), estado["offset"], procesar_linea, _guardador(hoy))
 
 
 def verificar_snowflake() -> None:

@@ -24,9 +24,15 @@ def guardar_estado(estado: dict) -> None:
     STATE_FILE.write_text(json.dumps(estado))
 
 
-def leer_desde(ruta: Path, offset: int, procesar: Callable[[str], None]) -> int:
-    """Lee lineas completas de `ruta` a partir de `offset`, invocando `procesar` por cada una.
-    Devuelve el offset hasta donde se proceso con exito (se detiene ante linea incompleta, EOF o error)."""
+def leer_desde(
+    ruta: Path,
+    offset: int,
+    procesar: Callable[[str], None],
+    guardar_avance: Callable[[int], None],
+) -> int:
+    """Lee lineas completas de `ruta` a partir de `offset`, invocando `procesar` por cada una y
+    `guardar_avance` con el offset despues de cada linea procesada con exito.
+    Devuelve el offset hasta donde se proceso (se detiene ante linea incompleta, EOF o error)."""
     if not ruta.exists():
         return offset
     with ruta.open("r", encoding="utf-8-sig") as f:
@@ -43,3 +49,4 @@ def leer_desde(ruta: Path, offset: int, procesar: Callable[[str], None]) -> int:
                 except Exception:
                     log.exception("Fallo procesando linea, se reintentara en el proximo ciclo: %s", linea)
                     return pos_antes
+            guardar_avance(f.tell())
