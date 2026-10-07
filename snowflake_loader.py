@@ -93,7 +93,7 @@ def _especificaciones(instancia: int, rs: list) -> list:
     solicitud = [(
         instancia, _fecha(periodos.get("Fecha Solicitud")), numero_documento,
         _numero(veh.get("Monto en soles")), _numero(veh.get("Monto en dólares")),
-        _numero(veh.get("Score")), _numero(veh.get("Puntaje")), _numero(veh.get("Cuotas")),
+        veh.get("Score"), _numero(veh.get("Puntaje")), _numero(veh.get("Cuotas")),
         _entero(cantidad.get("Cantidad de Solicitudes")),
         _numero(ingreso.get("Valor BD")), _entero(ingreso.get("Nro. Ingresos Mensuales")),
         _texto(regimen.get("Codigo_Regimen")), regimen.get("Regimen_Sunat"),

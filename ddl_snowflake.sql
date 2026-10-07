@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS DB_DEV.SC_SLV_RIESGOS.AGT_SAGI_BT_SOLICITUD (
     numero_documento            VARCHAR(20),
     monto_soles                 NUMBER(18,2),
     monto_dolares               NUMBER(18,2),
-    score                       NUMBER(18,2),
+    score                       VARCHAR(50),
     puntaje                     NUMBER(18,2),
     cuotas                      NUMBER(18,2),
     cantidad_solicitudes_previas NUMBER(38,0),
