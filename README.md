@@ -3,8 +3,8 @@
 Worker que monitorea el log NDJSON generado por ws_PowerCurve
 (`LogPwc\{yyyyMMdd}\InterceptPwc26201\InterceptPwc26201.log`), y por cada
 `IdSolicitudCredito` nuevo interceptado ejecuta contra SQL Server las queries
-equivalentes a `usp_ObtenerDatosVehiculoSolicitud` y guarda el resultado como
-un `.json` por solicitud en `resultados/`.
+equivalentes a `usp_ObtenerDatosVehiculoSolicitud` y carga el resultado normalizado
+en tablas `AGT_SAGI_BT_*` de Snowflake (una transacción por solicitud).
 
 ## Estructura
 
@@ -15,6 +15,8 @@ un `.json` por solicitud en `resultados/`.
 - `sqlserver_client.py` — ejecución de esas queries contra SQL Server (pyodbc).
 - `pam_client.py` — obtiene el token OAuth2 y la llave privada RSA desde la API de PAM.
 - `snowflake_client.py` — conexión a Snowflake por llave RSA (con respaldo a usuario/contraseña).
+- `snowflake_loader.py` — transforma los 19 result sets al modelo normalizado y los carga en Snowflake.
+- `ddl_snowflake.sql` — creación de las tablas `AGT_SAGI_BT_*` en `DB_DEV.SC_SLV_RIESGOS`.
 
 ## Instalación
 

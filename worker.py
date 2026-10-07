@@ -1,21 +1,36 @@
 """Worker que consume LogPwc\\{yyyyMMdd}\\InterceptPwc26201\\InterceptPwc26201.log (NDJSON)
 generado por ws_PowerCurve y, por cada IdSolicitudCredito nuevo interceptado, ejecuta las
-queries equivalentes a usp_ObtenerDatosVehiculoSolicitud (sqlserver_client) y guarda el
-resultado como JSON. El archivo rota por dia, igual que el resto de logs del proyecto."""
+queries de sqlserver_client y carga el resultado normalizado en Snowflake (snowflake_loader).
+El archivo rota por dia, igual que el resto de logs del proyecto."""
 import json
 import time
 from datetime import datetime, timedelta
 from typing import Callable
 
-from config import BASE_DIR, POLL_SECONDS, RESULTADOS_DIR, log
+from config import BASE_DIR, POLL_SECONDS, log
 from log_reader import cargar_estado, guardar_estado, leer_desde, ruta_del_dia
 from snowflake_client import conectar_snowflake
+from snowflake_loader import cargar_solicitud
 from sqlserver_client import obtener_datos_vehiculo
 
+_conexion_sf = None
 
-def guardar_resultado(id_solicitud_credito: int, result_sets: list) -> None:
-    ruta = RESULTADOS_DIR / f"{id_solicitud_credito}.json"
-    ruta.write_text(json.dumps(result_sets, ensure_ascii=False, indent=2), encoding="utf-8")
+
+def _conexion_snowflake():
+    global _conexion_sf
+    if _conexion_sf is None:
+        _conexion_sf = conectar_snowflake()
+    return _conexion_sf
+
+
+def _descartar_conexion_snowflake() -> None:
+    global _conexion_sf
+    if _conexion_sf is not None:
+        try:
+            _conexion_sf.close()
+        except Exception:
+            pass
+    _conexion_sf = None
 
 
 def procesar_linea(linea: str) -> None:
@@ -29,11 +44,11 @@ def procesar_linea(linea: str) -> None:
         id_solicitud_credito, registro.get("idopcion"), registro.get("i815categorialaboral"),
     )
     result_sets = obtener_datos_vehiculo(id_solicitud_credito)
-    guardar_resultado(id_solicitud_credito, result_sets)
-    log.info(
-        "Datos obtenidos OK para IdSolicitudCredito=%s, resultado guardado en %s",
-        id_solicitud_credito, RESULTADOS_DIR / f"{id_solicitud_credito}.json",
-    )
+    try:
+        cargar_solicitud(_conexion_snowflake(), id_solicitud_credito, result_sets)
+    except Exception:
+        _descartar_conexion_snowflake()
+        raise
 
 
 def _guardador(fecha: str) -> Callable[[int], None]:
