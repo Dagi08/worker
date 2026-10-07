@@ -23,6 +23,7 @@ SQL_VEHICULO = """
         CAST(DV.[Monto en soles] / NULLIF(FA2.JMFAA2TCS, 0) AS DECIMAL(18,2)) AS [Monto en dólares],
         DV.[Monto en soles],
         FA1.JMFAA1SEX AS Score,
+        FA1.JMFAA1AX1 AS Puntaje,
         FA2.JMFAA2CCU AS Cuotas,
         T.Tdnom AS [Tipo Documento],
         DV.[Numero de Documento]
