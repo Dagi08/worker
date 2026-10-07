@@ -25,6 +25,7 @@ from sqlserver_queries import (
     SQL_SALDO_USD,
     SQL_UTILIDAD_OPERATIVA_USD,
     SQL_VEHICULO,
+    SQL_MODELO_VEHICULO,
 )
 
 
@@ -68,4 +69,5 @@ def obtener_datos_vehiculo(id_solicitud_credito: int) -> list:
             _ejecutar(cursor, SQL_CUOTA_MAF_USD, id_solicitud_credito),
             _ejecutar(cursor, SQL_SALDO_USD, id_solicitud_credito),
             _ejecutar(cursor, SQL_RCI_USD, id_solicitud_credito),
+            _ejecutar(cursor, SQL_MODELO_VEHICULO,id_solicitud_credito),
         ]
