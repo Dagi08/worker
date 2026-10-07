@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 
 from config import BASE_DIR, POLL_SECONDS, RESULTADOS_DIR, log
 from log_reader import cargar_estado, guardar_estado, leer_desde, ruta_del_dia
+from snowflake_client import conectar_snowflake
 from sqlserver_client import obtener_datos_vehiculo
 
 
@@ -17,11 +18,14 @@ def guardar_resultado(id_solicitud_credito: int, result_sets: list) -> None:
 
 
 def procesar_linea(linea: str) -> None:
-    registro = json.loads(linea)
-    id_solicitud_credito = registro.get("IdSolicitudCredito")
+    registro = {k.lower(): v for k, v in json.loads(linea).items()}
+    id_solicitud_credito = registro.get("idsolicitudcredito")
+    if id_solicitud_credito is None:
+        log.error("Linea sin idSolicitudCredito, se descarta: %s", linea)
+        return
     log.info(
         "Procesando IdSolicitudCredito=%s idOpcion=%s I815categorialaboral=%s",
-        id_solicitud_credito, registro.get("idOpcion"), registro.get("I815categorialaboral"),
+        id_solicitud_credito, registro.get("idopcion"), registro.get("i815categorialaboral"),
     )
     result_sets = obtener_datos_vehiculo(id_solicitud_credito)
     guardar_resultado(id_solicitud_credito, result_sets)
@@ -45,8 +49,16 @@ def ciclo() -> None:
         guardar_estado({"fecha": hoy, "offset": nuevo_offset})
 
 
+def verificar_snowflake() -> None:
+    try:
+        conectar_snowflake().close()
+    except Exception:
+        log.error("No se pudo establecer la conexion a Snowflake al iniciar el worker")
+
+
 def main() -> None:
     log.info("Worker PWC iniciado. Base=%s cada %ss", BASE_DIR, POLL_SECONDS)
+    verificar_snowflake()
     while True:
         try:
             ciclo()

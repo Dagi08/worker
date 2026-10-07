@@ -41,7 +41,7 @@ def conectar_snowflake():
     si esa conexion falla, reintenta con el usuario/contrasena de respaldo
     (SNOWFLAKE_FALLBACK_USER/SNOWFLAKE_FALLBACK_PASSWORD)."""
     try:
-        return snowflake.connector.connect(
+        conn = snowflake.connector.connect(
             account=SF_ACCOUNT,
             user=SF_USER,
             private_key=_cargar_llave_privada_snowflake(),
@@ -51,10 +51,10 @@ def conectar_snowflake():
             role=SF_ROLE,
         )
     except Exception:
-        log.exception("Fallo la conexion a Snowflake via RSA, se reintentara con usuario/contrasena de respaldo")
+        log.exception("Fallo la autenticacion RSA en Snowflake (PAM o conexion), se reintentara con usuario/contrasena de respaldo")
         if not SF_FALLBACK_PASSWORD:
             raise
-        return snowflake.connector.connect(
+        conn = snowflake.connector.connect(
             account=SF_ACCOUNT,
             user=SF_FALLBACK_USER,
             password=SF_FALLBACK_PASSWORD,
@@ -63,3 +63,7 @@ def conectar_snowflake():
             schema=SF_SCHEMA,
             role=SF_ROLE,
         )
+        log.info("Conectado a Snowflake con usuario de respaldo %s (warehouse=%s, schema=%s)", SF_FALLBACK_USER, SF_WAREHOUSE, SF_SCHEMA)
+        return conn
+    log.info("Conectado a Snowflake con llave RSA (usuario=%s, warehouse=%s, schema=%s)", SF_USER, SF_WAREHOUSE, SF_SCHEMA)
+    return conn
