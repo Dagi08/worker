@@ -63,7 +63,7 @@ def conectar_snowflake():
             schema=SF_SCHEMA,
             role=SF_ROLE,
         )
-        log.info("Conectado a Snowflake con usuario de respaldo %s (warehouse=%s, schema=%s)", SF_FALLBACK_USER, SF_WAREHOUSE, SF_SCHEMA)
+        log.info("Conectado a Snowflake con usuario de respaldo")
         return conn
-    log.info("Conectado a Snowflake con llave RSA (usuario=%s, warehouse=%s, schema=%s)", SF_USER, SF_WAREHOUSE, SF_SCHEMA)
+    log.info("Conectado a Snowflake con llave RSA")
     return conn
