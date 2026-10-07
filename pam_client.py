@@ -1,7 +1,7 @@
 """Obtiene la llave privada RSA desde la API de PAM (senhasegura) con OAuth2 client_credentials."""
 import requests
 
-from config import PAM_BASE_URL, PAM_CLIENT_ID, PAM_CLIENT_SECRET, PAM_KEY_ID
+from config import PAM_BASE_URL, PAM_CLIENT_ID, PAM_CLIENT_SECRET, PAM_KEY_ID, log
 
 PAM_TIMEOUT = 15
 
@@ -30,4 +30,6 @@ def obtener_llave_privada_pam() -> str:
         timeout=PAM_TIMEOUT,
     )
     respuesta.raise_for_status()
-    return respuesta.json()["key"]["private_key"]
+    llave = respuesta.json()["key"]["private_key"]
+    log.info("Llave RSA obtenida desde PAM (key id %s)", PAM_KEY_ID)
+    return llave
