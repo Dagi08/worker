@@ -7,13 +7,14 @@ import time
 from datetime import datetime, timedelta
 from typing import Callable
 
-from config import BASE_DIR, POLL_SECONDS, log
-from log_reader import cargar_estado, guardar_estado, leer_desde, ruta_del_dia
+from config import BASE_DIR, MAX_REINTENTOS, POLL_SECONDS, log, log_fallidas
+from log_reader import EsperandoReintento, cargar_estado, guardar_estado, leer_desde, ruta_del_dia
 from snowflake_client import conectar_snowflake
 from snowflake_loader import cargar_solicitud
 from sqlserver_client import obtener_datos_vehiculo
 
 _conexion_sf = None
+_intentos: dict[str, tuple[int, float]] = {}
 
 
 def _conexion_snowflake():
@@ -51,6 +52,25 @@ def procesar_linea(linea: str) -> None:
         raise
 
 
+def _procesar_con_reintentos(linea: str) -> None:
+    ahora = time.monotonic()
+    intentos, proximo_intento = _intentos.get(linea, (0, 0.0))
+    if ahora < proximo_intento:
+        raise EsperandoReintento()
+    try:
+        procesar_linea(linea)
+    except Exception:
+        intentos += 1
+        if intentos >= MAX_REINTENTOS:
+            _intentos.pop(linea, None)
+            log_fallidas.error("Descartada tras %s intentos: %s", intentos, linea)
+            log.error("Linea descartada tras %s intentos, se continua con la siguiente: %s", intentos, linea)
+            return
+        _intentos[linea] = (intentos, ahora + POLL_SECONDS * 2 ** intentos)
+        raise
+    _intentos.pop(linea, None)
+
+
 def _guardador(fecha: str) -> Callable[[int], None]:
     return lambda offset: guardar_estado({"fecha": fecha, "offset": offset})
 
@@ -60,13 +80,13 @@ def ciclo() -> None:
     hoy = datetime.now().strftime("%Y%m%d")
     while estado["fecha"] != hoy:
         ruta = ruta_del_dia(estado["fecha"])
-        estado["offset"] = leer_desde(ruta, estado["offset"], procesar_linea, _guardador(estado["fecha"]))
+        estado["offset"] = leer_desde(ruta, estado["offset"], _procesar_con_reintentos, _guardador(estado["fecha"]))
         if ruta.exists() and estado["offset"] < ruta.stat().st_size:
             return
         siguiente = (datetime.strptime(estado["fecha"], "%Y%m%d") + timedelta(days=1)).strftime("%Y%m%d")
         estado = {"fecha": siguiente, "offset": 0}
         guardar_estado(estado)
-    leer_desde(ruta_del_dia(hoy), estado["offset"], procesar_linea, _guardador(hoy))
+    leer_desde(ruta_del_dia(hoy), estado["offset"], _procesar_con_reintentos, _guardador(hoy))
 
 
 def verificar_snowflake() -> None:

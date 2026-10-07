@@ -7,6 +7,10 @@ from typing import Callable
 from config import BASE_DIR, STATE_FILE, log
 
 
+class EsperandoReintento(Exception):
+    """La linea aun esta en espera de su proximo intento; no es un error nuevo."""
+
+
 def ruta_del_dia(fecha: str) -> Path:
     return BASE_DIR / fecha / "InterceptPwc26201" / "InterceptPwc26201.log"
 
@@ -46,6 +50,8 @@ def leer_desde(
             if linea:
                 try:
                     procesar(linea)
+                except EsperandoReintento:
+                    return pos_antes
                 except Exception:
                     log.exception("Fallo procesando linea, se reintentara en el proximo ciclo: %s", linea)
                     return pos_antes

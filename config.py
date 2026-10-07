@@ -22,6 +22,7 @@ if "PWC_INTERCEPT_BASE_DIR" not in os.environ:
 BASE_DIR = Path(os.environ["PWC_INTERCEPT_BASE_DIR"])
 STATE_FILE = Path(os.environ.get("PWC_STATE_FILE", str(SCRIPT_DIR / "worker_pwc_state.json")))
 POLL_SECONDS = int(os.environ.get("PWC_POLL_SECONDS", "5"))
+MAX_REINTENTOS = int(os.environ.get("PWC_MAX_REINTENTOS", "5"))
 CONN_STR = os.environ["PWC_DB_CONN_STR"]
 
 # API de PAM (senhasegura) de donde se obtiene la llave privada RSA de Snowflake
@@ -64,3 +65,8 @@ _handler_exitos = logging.FileHandler(LOG_DIR / "exitos_snowflake.log", encoding
 _handler_exitos.setFormatter(logging.Formatter(FORMATO_LOG))
 log_exitos = logging.getLogger("worker_pwc.exitos")
 log_exitos.addHandler(_handler_exitos)
+
+_handler_fallidas = logging.FileHandler(LOG_DIR / "solicitudes_fallidas.log", encoding="utf-8")
+_handler_fallidas.setFormatter(logging.Formatter(FORMATO_LOG))
+log_fallidas = logging.getLogger("worker_pwc.fallidas")
+log_fallidas.addHandler(_handler_fallidas)
