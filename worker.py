@@ -7,13 +7,16 @@ import time
 from datetime import datetime, timedelta
 from typing import Callable
 
-from config import BASE_DIR, MAX_REINTENTOS, POLL_SECONDS, log, log_fallidas
+from config import BASE_DIR, MAX_REINTENTOS, POLL_SECONDS, SF_DATABASE, SF_SCHEMA, log, log_fallidas
 from log_reader import EsperandoReintento, cargar_estado, guardar_estado, leer_desde, ruta_del_dia
 from snowflake_client import conectar_snowflake
 from snowflake_loader import cargar_solicitud
 from sqlserver_client import obtener_datos_vehiculo
 
 _conexion_sf = None
+# SP de Snowflake que ejecuta el proceso SAGI completo de una instancia:
+# modelo, web scraping, compliance y dictamen.
+SP_PROCESAR_SAGI = f"{SF_DATABASE}.{SF_SCHEMA}.SP_SAGI_PROCESAR_INSTANCIA"
 _intentos: dict[str, tuple[int, float]] = {}
 
 
@@ -34,6 +37,23 @@ def _descartar_conexion_snowflake() -> None:
     _conexion_sf = None
 
 
+def lanzar_procesamiento_sagi(id_solicitud_credito) -> None:
+    """Lanza en Snowflake el proceso completo de la instancia sin esperar a que termine
+    (execute_async). El SP sigue corriendo en Snowflake mientras el worker continua."""
+    try:
+        cur = _conexion_snowflake().cursor()
+        try:
+            cur.execute_async(f"CALL {SP_PROCESAR_SAGI}(%s)", (int(id_solicitud_credito),))
+            log.info("SAGI: procesamiento lanzado IdSolicitudCredito=%s query_id=%s",
+                     id_solicitud_credito, cur.sfqid)
+        finally:
+            cur.close()
+    except Exception:
+        # No se relanza: la carga de Bantotal ya quedo confirmada y no debe repetirse.
+        log_fallidas.exception("SAGI: no se pudo lanzar el procesamiento IdSolicitudCredito=%s",
+                               id_solicitud_credito)
+
+
 def procesar_linea(linea: str) -> None:
     registro = {k.lower(): v for k, v in json.loads(linea).items()}
     id_solicitud_credito = registro.get("idsolicitudcredito")
@@ -50,6 +70,7 @@ def procesar_linea(linea: str) -> None:
     except Exception:
         _descartar_conexion_snowflake()
         raise
+    lanzar_procesamiento_sagi(id_solicitud_credito)
 
 
 def _procesar_con_reintentos(linea: str) -> None:
