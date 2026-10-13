@@ -27,7 +27,7 @@ from config import SF_DATABASE, SF_SCHEMA, log, log_exitos
 CATEGORIAS_INGRESO = ("5° Categoría", "4° Categoría", "3° Categoría", "1° Categoría")
 INDICES_INDICADORES = range(11, 17)
 
-PERSONA_COLS = ("numero_documento", "tipo_documento", "nombre", "apellido_paterno", "apellido_materno", "fecha_nacimiento")
+PERSONA_COLS = ("numero_documento", "tipo_documento", "nombre", "apellido_paterno", "apellido_materno", "sexo", "fecha_nacimiento")
 SOLICITUD_COLS = (
     "instancia", "fecha_solicitud", "numero_documento", "monto_soles", "monto_dolares", "score", "puntaje",
     "cuotas", "cantidad_solicitudes_previas", "valor_bd", "nro_ingresos_mensuales", "codigo_regimen",
@@ -89,7 +89,7 @@ def _especificaciones(instancia: int, rs: list) -> list:
         raise ValueError(f"IdSolicitudCredito={instancia} sin numero de documento")
 
     persona = [(numero_documento, veh.get("Tipo Documento"), per.get("Nombre"), per.get("Apellido Paterno"),
-                per.get("Apellido Materno"), _fecha(per.get("Fecha de Nacimiento")))]
+                per.get("Apellido Materno"), per.get("Sexo"), _fecha(per.get("Fecha de Nacimiento")))]
     solicitud = [(
         instancia, _fecha(periodos.get("Fecha Solicitud")), numero_documento,
         _numero(veh.get("Monto en soles")), _numero(veh.get("Monto en dólares")),

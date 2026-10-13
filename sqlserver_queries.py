@@ -77,6 +77,7 @@ SQL_PERSONA = """
         TRIM(CONCAT(TRIM(CLI2.Pfnom1), ' ', TRIM(CLI2.Pfnom2))) AS [Nombre],
         TRIM(CLI2.Pfape1) AS [Apellido Paterno],
         TRIM(CLI2.Pfape2) AS [Apellido Materno],
+        TRIM(CLI2.Pfcant) AS [Sexo],
         CAST(CLI2.Pffnac AS DATE) AS [Fecha de Nacimiento]
     FROM (
         SELECT d.WFInsPrcId

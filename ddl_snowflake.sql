@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS DB_DEV.SC_SLV_RIESGOS.AGT_SAGI_BT_PERSONA (
     nombre              VARCHAR(200),
     apellido_paterno    VARCHAR(100),
     apellido_materno    VARCHAR(100),
+    sexo                VARCHAR(5),
     fecha_nacimiento    DATE,
     fecha_carga         TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
     CONSTRAINT PK_AGT_SAGI_BT_PERSONA PRIMARY KEY (numero_documento)
