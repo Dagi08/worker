@@ -3,3 +3,4 @@ python-dotenv
 snowflake-connector-python
 cryptography
 requests
+certifi

@@ -5,12 +5,19 @@ import os
 import sys
 from pathlib import Path
 
+import certifi
 from dotenv import load_dotenv
 
 if getattr(sys, "frozen", False):
     SCRIPT_DIR = Path(sys.executable).resolve().parent
 else:
     SCRIPT_DIR = Path(__file__).resolve().parent
+
+# snowflake-connector-python busca el CA bundle en rutas fijas dentro de _MEIPASS cuando el
+# worker corre como .exe (PyInstaller), y esas rutas no coinciden con donde certifi lo deja
+# ("No cabundle file is found in _MEIPASS"). Fijar REQUESTS_CA_BUNDLE evita esa busqueda:
+# es la primera variable que revisa, antes de caer en la logica de _MEIPASS.
+os.environ.setdefault("REQUESTS_CA_BUNDLE", certifi.where())
 
 load_dotenv(SCRIPT_DIR / ".env")
 
