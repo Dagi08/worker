@@ -3,6 +3,7 @@ y el logger compartido por el resto de modulos."""
 import logging
 import os
 import sys
+from datetime import datetime
 from pathlib import Path
 
 import certifi
@@ -55,24 +56,49 @@ FORMATO_LOG = "%(asctime)s [%(levelname)s] %(message)s"
 LOG_DIR = SCRIPT_DIR / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
-_handlers: list[logging.Handler] = [logging.FileHandler(LOG_DIR / "worker_pwc.log", encoding="utf-8")]
+
+
+class _ArchivoPorDia(logging.FileHandler):
+    """Escribe en logs\\{yyyyMMdd}\\<nombre>. Al cambiar el dia (el servicio corre sin reiniciarse)
+    cierra el archivo y sigue en la carpeta del dia nuevo."""
+
+    def __init__(self, nombre: str):
+        self._nombre = nombre
+        self._dia = datetime.now().strftime("%Y%m%d")
+        super().__init__(self._ruta(), encoding="utf-8")
+
+    def _ruta(self) -> Path:
+        carpeta = LOG_DIR / self._dia
+        carpeta.mkdir(parents=True, exist_ok=True)
+        return carpeta / self._nombre
+
+    def emit(self, record: logging.LogRecord) -> None:
+        dia = datetime.fromtimestamp(record.created).strftime("%Y%m%d")
+        if dia != self._dia:
+            self._dia = dia
+            self.close()  # FileHandler reabre el stream en el siguiente emit
+            self.baseFilename = str(self._ruta())
+        super().emit(record)
+
+
+_handlers: list[logging.Handler] = [_ArchivoPorDia("worker_pwc.log")]
 if sys.stderr is not None:  # como servicio de Windows no hay consola donde escribir
     _handlers.append(logging.StreamHandler())
 logging.basicConfig(level=logging.INFO, format=FORMATO_LOG, handlers=_handlers)
 
-_handler_errores = logging.FileHandler(LOG_DIR / "errores.log", encoding="utf-8")
+_handler_errores = _ArchivoPorDia("errores.log")
 _handler_errores.setLevel(logging.ERROR)
 _handler_errores.setFormatter(logging.Formatter(FORMATO_LOG))
 logging.getLogger().addHandler(_handler_errores)
 
 log = logging.getLogger("worker_pwc")
 
-_handler_exitos = logging.FileHandler(LOG_DIR / "exitos_snowflake.log", encoding="utf-8")
+_handler_exitos = _ArchivoPorDia("exitos_snowflake.log")
 _handler_exitos.setFormatter(logging.Formatter(FORMATO_LOG))
 log_exitos = logging.getLogger("worker_pwc.exitos")
 log_exitos.addHandler(_handler_exitos)
 
-_handler_fallidas = logging.FileHandler(LOG_DIR / "solicitudes_fallidas.log", encoding="utf-8")
+_handler_fallidas = _ArchivoPorDia("solicitudes_fallidas.log")
 _handler_fallidas.setFormatter(logging.Formatter(FORMATO_LOG))
 log_fallidas = logging.getLogger("worker_pwc.fallidas")
 log_fallidas.addHandler(_handler_fallidas)
