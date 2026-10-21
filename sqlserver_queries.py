@@ -12,8 +12,7 @@ SQL_VEHICULO = """
         SELECT
             WFInsPrcId,
             CAST(MAX(CASE WHEN WFAttSId = 'VEHMONTO' THEN TRIM(WFAttSVal) END) AS DECIMAL(18,2)) AS [Monto en soles],
-            MAX(CASE WHEN WFAttSId = 'CLTIPDOC' THEN TRIM(WFAttSVal) END) AS CodTipoDoc,
-            MAX(CASE WHEN WFAttSId = 'CLNRODOC' THEN TRIM(WFAttSVal) END) AS [Numero de Documento]
+            MAX(CASE WHEN WFAttSId = 'CLTIPDOC' THEN TRIM(WFAttSVal) END) AS CodTipoDoc
         FROM WFAttSValues
         --WHERE WFInsPrcId = ?
         GROUP BY WFInsPrcId
@@ -26,7 +25,7 @@ SQL_VEHICULO = """
         FA1.JMFAA1AX1 AS Puntaje,
         FA2.JMFAA2CCU AS Cuotas,
         T.Tdnom AS [Tipo Documento],
-        DV.[Numero de Documento]
+        TRIM(FA2.JMFAA2NDO) AS [Numero de Documento]
     FROM (
         SELECT d.WFInsPrcId
         FROM WFWrkItems d
