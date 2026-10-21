@@ -3,9 +3,9 @@ y a las queries adicionales de ingresos/deuda financiera). Todas usan `?` como p
 posicional para pyodbc; ver sqlserver_client.obtener_datos_vehiculo para el orden de llamada."""
 
 SQL_NUMERO_DOCUMENTO = """
-    SELECT MAX(CASE WHEN WFAttSId = 'CLNRODOC' THEN TRIM(WFAttSVal) END) AS NumeroDocumento
-    FROM WFAttSValues
-    WHERE WFInsPrcId = ?
+    SELECT (JMFAA2NDO) AS NumeroDocumento
+        FROM JMFAA2
+    WHERE JMFAA2INS = ?
 """
 SQL_VEHICULO = """
     WITH DatosVehiculo AS (

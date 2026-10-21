@@ -87,6 +87,9 @@ def _especificaciones(instancia: int, rs: list) -> list:
     numero_documento = veh.get("Numero de Documento") or (rs[3][0]["DNI"] if rs[3] else None)
     if numero_documento is None:
         raise ValueError(f"IdSolicitudCredito={instancia} sin numero de documento")
+    # SQL_MODELO_VEHICULO devuelve '-' cuando el vehiculo no tiene modelo o no esta en el catalogo
+    #if not any((f["Modelo"] or "-").strip() != "-" for f in rs[18]):
+    #    raise ValueError(f"IdSolicitudCredito={instancia} sin modelo de vehiculo")
 
     persona = [(numero_documento, veh.get("Tipo Documento"), per.get("Nombre"), per.get("Apellido Paterno"),
                 per.get("Apellido Materno"), per.get("Sexo"), _fecha(per.get("Fecha de Nacimiento")))]
@@ -161,6 +164,6 @@ def cargar_solicitud(conn, instancia: int, result_sets: list) -> None:
         cur.execute("COMMIT")
     except Exception:
         cur.execute("ROLLBACK")
-        log.error("Fallo la carga en Snowflake de IdSolicitudCredito=%s, se hizo ROLLBACK", instancia)
+        log.error("Fallo la carga en Snowflake de IdSolicitudCredito=%s, se interntara otra vez", instancia)
         raise
     log_exitos.info("IdSolicitudCredito=%s cargado en Snowflake: %s", instancia, conteos)
