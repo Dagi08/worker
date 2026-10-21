@@ -4,3 +4,7 @@ worker_pwc_state.json
 resultados/
 __pycache__/
 temp/
+.venv
+build/
+dist/
+*.spec

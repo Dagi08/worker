@@ -55,11 +55,10 @@ FORMATO_LOG = "%(asctime)s [%(levelname)s] %(message)s"
 LOG_DIR = SCRIPT_DIR / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
-logging.basicConfig(
-    level=logging.INFO,
-    format=FORMATO_LOG,
-    handlers=[logging.StreamHandler(), logging.FileHandler(LOG_DIR / "worker_pwc.log", encoding="utf-8")],
-)
+_handlers: list[logging.Handler] = [logging.FileHandler(LOG_DIR / "worker_pwc.log", encoding="utf-8")]
+if sys.stderr is not None:  # como servicio de Windows no hay consola donde escribir
+    _handlers.append(logging.StreamHandler())
+logging.basicConfig(level=logging.INFO, format=FORMATO_LOG, handlers=_handlers)
 
 _handler_errores = logging.FileHandler(LOG_DIR / "errores.log", encoding="utf-8")
 _handler_errores.setLevel(logging.ERROR)

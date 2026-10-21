@@ -66,3 +66,29 @@ py worker.py
 
 El worker corre en loop, revisando el log cada `PWC_POLL_SECONDS` segundos
 (default 5) y guardando el estado procesado en `worker_pwc_state.json`.
+
+## Servicio de Windows
+
+`servicio.py` es el entrypoint del `.exe`: el mismo ejecutable corre como servicio de
+Windows (pywin32) o, abierto con doble clic, como worker en consola.
+
+Compilar (el `cacert.pem` de certifi se empaqueta para la conexion SSL a Snowflake):
+
+```powershell
+$cert = python -c "import certifi; print(certifi.where())"
+pyinstaller --onefile --clean --noconfirm --name worker --collect-data certifi --add-data "$cert;." --collect-all snowflake.connector --hidden-import pyodbc --hidden-import win32timezone servicio.py
+```
+
+Instalar en el servidor (PowerShell como Administrador, en la carpeta con `worker.exe` y `.env`):
+
+```powershell
+Get-ChildItem | Unblock-File
+.\worker.exe --startup auto install
+sc.exe failure SAGIWorker reset= 86400 actions= restart/10000/restart/10000/restart/10000
+sc.exe config SAGIWorker obj= "DOMINIO\usuario" password= "contraseña"   # cuenta con acceso a SQL Server
+.\worker.exe start
+```
+
+Otros comandos: `.\worker.exe stop`, `.\worker.exe remove`, `.\worker.exe debug` (consola).
+Al detenerse, el worker termina la linea en curso y guarda su avance. Los errores de arranque
+del servicio quedan en el Visor de eventos (Registro de aplicacion, origen `SAGIWorker`).

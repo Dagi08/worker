@@ -3,6 +3,7 @@ generado por ws_PowerCurve y, por cada IdSolicitudCredito nuevo interceptado, ej
 queries de sqlserver_client y carga el resultado normalizado en Snowflake (snowflake_loader).
 El archivo rota por dia, igual que el resto de logs del proyecto."""
 import json
+import threading
 import time
 from datetime import datetime, timedelta
 from typing import Callable
@@ -18,6 +19,9 @@ _conexion_sf = None
 # modelo, web scraping, compliance y dictamen.
 SP_PROCESAR_SAGI = f"{SF_DATABASE}.{SF_SCHEMA}.SP_SAGI_PROCESAR_INSTANCIA"
 _intentos: dict[str, tuple[int, float]] = {}
+# Lo activa el servicio de Windows (servicio.py) al recibir "Detener": el worker termina la
+# linea en curso, deja de leer y sale del bucle principal.
+detener = threading.Event()
 
 
 def _conexion_snowflake():
@@ -74,6 +78,9 @@ def procesar_linea(linea: str) -> None:
 
 
 def _procesar_con_reintentos(linea: str) -> None:
+    if detener.is_set():
+        # Corta la lectura sin avanzar el offset: la linea se procesa al volver a iniciar.
+        raise EsperandoReintento()
     ahora = time.monotonic()
     intentos, proximo_intento = _intentos.get(linea, (0, 0.0))
     if ahora < proximo_intento:
@@ -120,12 +127,14 @@ def verificar_snowflake() -> None:
 def main() -> None:
     log.info("Worker PWC iniciado. Base=%s cada %ss", BASE_DIR, POLL_SECONDS)
     verificar_snowflake()
-    while True:
+    while not detener.is_set():
         try:
             ciclo()
         except Exception:
             log.exception("Error inesperado en el ciclo del worker")
-        time.sleep(POLL_SECONDS)
+        detener.wait(POLL_SECONDS)
+    _descartar_conexion_snowflake()
+    log.info("Worker PWC detenido")
 
 
 if __name__ == "__main__":
