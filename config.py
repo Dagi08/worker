@@ -62,8 +62,11 @@ class _ArchivoPorDia(logging.FileHandler):
     """Escribe en logs\\{yyyyMMdd}\\<nombre>. Al cambiar el dia (el servicio corre sin reiniciarse)
     cierra el archivo y sigue en la carpeta del dia nuevo."""
 
+    _nombres: list[str] = []  # todos los logs por dia, para crearlos juntos al cambiar el dia
+
     def __init__(self, nombre: str):
         self._nombre = nombre
+        self._nombres.append(nombre)
         self._dia = datetime.now().strftime("%Y%m%d")
         super().__init__(self._ruta(), encoding="utf-8")
 
@@ -78,6 +81,10 @@ class _ArchivoPorDia(logging.FileHandler):
             self._dia = dia
             self.close()  # FileHandler reabre el stream en el siguiente emit
             self.baseFilename = str(self._ruta())
+            # Los demas logs solo cambian de carpeta cuando escriben: se crean ya vacios para
+            # que la carpeta del dia tenga los 4 archivos desde el inicio.
+            for nombre in self._nombres:
+                (LOG_DIR / dia / nombre).touch(exist_ok=True)
         super().emit(record)
 
 
