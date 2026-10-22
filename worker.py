@@ -41,21 +41,45 @@ def _descartar_conexion_snowflake() -> None:
     _conexion_sf = None
 
 
-def lanzar_procesamiento_sagi(id_solicitud_credito) -> None:
-    """Lanza en Snowflake el proceso completo de la instancia sin esperar a que termine
-    (execute_async). El SP sigue corriendo en Snowflake mientras el worker continua."""
+def _ejecutar_procesamiento_sagi(id_solicitud_credito) -> None:
+    """Ejecuta SP_SAGI_PROCESAR_INSTANCIA y espera su resultado (modelo, web scraping,
+    compliance y dictamen; puede tardar varios minutos). Usa su propia conexion para no
+    bloquear ni compartir la sesion del hilo principal, y deja el log del SP en worker_pwc.log."""
+    conn = None
     try:
-        cur = _conexion_snowflake().cursor()
+        conn = conectar_snowflake()
+        cur = conn.cursor()
         try:
-            cur.execute_async(f"CALL {SP_PROCESAR_SAGI}(%s)", (int(id_solicitud_credito),))
-            log.info("SAGI: procesamiento lanzado IdSolicitudCredito=%s query_id=%s",
-                     id_solicitud_credito, cur.sfqid)
+            log.info("SAGI: procesamiento iniciado IdSolicitudCredito=%s", id_solicitud_credito)
+            cur.execute(f"CALL {SP_PROCESAR_SAGI}(%s)", (int(id_solicitud_credito),))
+            fila = cur.fetchone()
+            resultado = fila[0] if fila else ""
+            log.info("SAGI: procesamiento terminado IdSolicitudCredito=%s query_id=%s\n%s",
+                     id_solicitud_credito, cur.sfqid, resultado)
+            if str(resultado).startswith("ERROR"):
+                log_fallidas.error("SAGI: %s", resultado)
         finally:
             cur.close()
     except Exception:
         # No se relanza: la carga de Bantotal ya quedo confirmada y no debe repetirse.
-        log_fallidas.exception("SAGI: no se pudo lanzar el procesamiento IdSolicitudCredito=%s",
-                               id_solicitud_credito)
+        log_fallidas.exception("SAGI: fallo el procesamiento IdSolicitudCredito=%s", id_solicitud_credito)
+    finally:
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+
+def lanzar_procesamiento_sagi(id_solicitud_credito) -> None:
+    """Lanza el proceso SAGI de la instancia en un hilo aparte: el worker sigue leyendo el log
+    mientras el SP corre en Snowflake y espera su resultado para dejarlo en el log."""
+    threading.Thread(
+        target=_ejecutar_procesamiento_sagi,
+        args=(id_solicitud_credito,),
+        name=f"sagi-{id_solicitud_credito}",
+        daemon=True,
+    ).start()
 
 
 def procesar_linea(linea: str) -> None:
